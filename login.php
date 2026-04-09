@@ -5,25 +5,33 @@ require_once 'config/db.php';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email']);
+    $email    = trim($_POST['email']);
     $password = hash('sha256', $_POST['password']);
-    
-    $stmt = $pdo->prepare("SELECT u.*, e.nombre as empresa_nombre FROM users u JOIN empresas e ON u.empresa_id = e.id WHERE u.email = ? AND u.password = ? AND u.activo = 1");
+
+    $pdo  = getDB(); // <- obtiene la conexión desde db.php
+
+    $stmt = $pdo->prepare("
+        SELECT u.*, e.nombre as empresa_nombre 
+        FROM users u 
+        JOIN empresas e ON u.empresa_id = e.id 
+        WHERE u.email = ? AND u.password = ? AND u.activo = 1
+    ");
     $stmt->execute([$email, $password]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($user) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['nombre'] = $user['nombre'];
-        $_SESSION['empresa_id'] = $user['empresa_id'];
+        $_SESSION['user_id']        = $user['id'];
+        $_SESSION['nombre']         = $user['nombre'];
+        $_SESSION['empresa_id']     = $user['empresa_id'];
         $_SESSION['empresa_nombre'] = $user['empresa_nombre'];
-        $_SESSION['rol'] = $user['rol'];
+        $_SESSION['rol']            = $user['rol'];
         header('Location: dashboard.php');
         exit;
     } else {
         $error = 'Credenciales incorrectas';
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
