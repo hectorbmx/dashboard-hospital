@@ -1,5 +1,6 @@
 <?php
-$host = '64.23.184.137';
+// $host = '64.23.184.137';
+$host = 'mysql_db';
 $port = '3306';
 $db   = 'bot_database';
 $user = 'root';
