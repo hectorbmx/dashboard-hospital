@@ -107,35 +107,37 @@
 .tag-neutral  { background:rgba(107,114,128,.1); color:#9ca3af; border-color:rgba(107,114,128,.2); }
 .tag-requiere { background:rgba(239,68,68,.1);   color:#ef4444; border-color:rgba(239,68,68,.2); }
 </style>
-
+<!-- 
 <script>
 let leadActivo = null;
 
 function abrirConversacion(leadId) {
+  console.log("Cargando lead:", leadId); // Revisa esto en la consola (F12)
   leadActivo = leadId;
+  
   document.getElementById('modal-overlay').style.display = 'block';
-  const modal = document.getElementById('modal-conv');
-  modal.style.display = 'flex';
+  document.getElementById('modal-conv').style.display = 'flex';
 
-  // Reset
-  document.getElementById('chat-loading').style.display = 'block';
-  document.getElementById('modal-chat').innerHTML = '<div id="chat-loading" style="text-align:center;color:#6b7280;font-size:13px;padding:20px">Cargando conversación…</div>';
-  document.getElementById('modal-tags').innerHTML = '';
-  document.getElementById('modal-nombre').textContent = '';
-  document.getElementById('modal-whatsapp').textContent = '';
-  document.getElementById('btn-tomar').style.display = 'none';
-
-  fetch(`api/conversacion.php?lead_id=${leadId}`)
-    .then(r => r.json())
+  // Reset visual (Usamos clases en lugar de IDs repetidos)
+  const chatContainer = document.getElementById('modal-chat');
+  chatContainer.innerHTML = '<div class="loading-state" style="text-align:center;color:#6b7280;padding:20px">Cargando...</div>';
+  
+  // Agregamos cache buster (&_v=...)
+  fetch(`api/conversacion.php?lead_id=${leadId}&_v=${Date.now()}`)
+    .then(r => {
+        if (!r.ok) throw new Error("Error en servidor");
+        return r.json();
+    })
     .then(data => {
       if (data.error) {
-        document.getElementById('modal-chat').innerHTML = `<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">${data.error}</div>`;
-        return;
+        chatContainer.innerHTML = `<div style="color:#ef4444;padding:20px">${data.error}</div>`;
+      } else {
+        renderModal(data);
       }
-      renderModal(data);
     })
-    .catch(() => {
-      document.getElementById('modal-chat').innerHTML = '<div style="text-align:center;color:#ef4444;font-size:13px;padding:20px">Error al cargar la conversación</div>';
+    .catch(err => {
+      chatContainer.innerHTML = '<div style="color:#ef4444;padding:20px">Error de conexión</div>';
+      console.error(err);
     });
 }
 
@@ -245,5 +247,149 @@ function escHtml(str) {
 }
 
 // Cerrar con Escape
+document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+</script> -->
+
+<script>
+let leadActivo = null;
+
+function abrirConversacion(leadId) {
+  console.log("Cargando lead:", leadId);
+  leadActivo = leadId;
+  
+  // 1. MOSTRAR MODAL
+  document.getElementById('modal-overlay').style.display = 'block';
+  document.getElementById('modal-conv').style.display = 'flex';
+
+  // 2. LIMPIEZA CRÍTICA (Esto evita que se quede el chat anterior en producción)
+  const chatContainer = document.getElementById('modal-chat');
+  chatContainer.innerHTML = '<div style="text-align:center;color:#6b7280;padding:20px">Cargando historial...</div>';
+  
+  // Limpiamos también el header para que no veas el nombre del lead anterior
+  document.getElementById('modal-nombre').textContent = '...';
+  document.getElementById('modal-avatar').textContent = '';
+  document.getElementById('modal-tags').innerHTML = '';
+
+  // 3. PETICIÓN (Mantenemos tu ruta api/ que ya funciona)
+  fetch(`api/conversacion.php?lead_id=${leadId}&_v=${Date.now()}`)
+    .then(r => {
+        if (!r.ok) throw new Error("Error en servidor");
+        return r.json();
+    })
+    .then(data => {
+      if (data.error) {
+        chatContainer.innerHTML = `<div style="color:#ef4444;padding:20px">${data.error}</div>`;
+      } else {
+        // Solo renderizamos si el leadId que llegó es el que el usuario tiene abierto actualmente
+        if(leadActivo == leadId) {
+            renderModal(data);
+        }
+      }
+    })
+    .catch(err => {
+      chatContainer.innerHTML = '<div style="color:#ef4444;padding:20px">Error de conexión</div>';
+      console.error(err);
+    });
+}
+
+function renderModal(data) {
+  const lead = data.lead;
+  const msgs = data.mensajes;
+
+  // Avatar e Info (Tu lógica original impecable)
+  const nombre = lead.nombre ?? 'Sin nombre';
+  const iniciales = nombre.split(' ').slice(0,2).map(p => p[0]).join('').toUpperCase();
+  document.getElementById('modal-avatar').textContent = iniciales;
+  document.getElementById('modal-nombre').textContent = nombre;
+  document.getElementById('modal-whatsapp').textContent = '+' + lead.whatsapp_id;
+
+  // Tags info
+  const tempClass = { 'Caliente':'tag-caliente', 'Tibio':'tag-tibio', 'Frio':'tag-frio' };
+  const tags = [
+    { label: lead.lead_temperatura ?? 'Sin temp', cls: tempClass[lead.lead_temperatura] ?? 'tag-neutral' },
+    lead.semanas_embarazo ? { label: lead.semanas_embarazo + ' semanas', cls: 'tag-neutral' } : null,
+    lead.tipo_atencion    ? { label: lead.tipo_atencion,   cls: 'tag-neutral' } : null,
+    lead.tipo_cobertura   ? { label: lead.tipo_cobertura,  cls: 'tag-neutral' } : null,
+    lead.requiere_humano == 1 ? { label: '⚠ Requiere agente', cls: 'tag-requiere' } : null,
+  ].filter(Boolean);
+
+  document.getElementById('modal-tags').innerHTML = tags
+    .map(t => `<span class="info-tag ${t.cls}">${t.label}</span>`)
+    .join('');
+
+  // Status footer
+  document.getElementById('modal-status').textContent =
+    `${msgs.length} mensaje${msgs.length !== 1 ? 's' : ''} · ${lead.lead_status ?? ''}`;
+
+  // Botón tomar lead
+  document.getElementById('btn-tomar').style.display = (lead.requiere_humano == 1) ? 'inline-flex' : 'none';
+
+  // Render mensajes (Tu lógica original)
+  if (!msgs.length) {
+    document.getElementById('modal-chat').innerHTML =
+      '<div style="text-align:center;color:#6b7280;font-size:13px;padding:30px">Sin mensajes registrados</div>';
+    return;
+  }
+
+  let html = '';
+  let lastFecha = '';
+
+  msgs.forEach(m => {
+    const fecha = m.fecha ? m.fecha.slice(0, 10) : '';
+    const hora  = m.fecha ? m.fecha.slice(11, 16) : '';
+
+    if (fecha !== lastFecha) {
+      html += `<div class="chat-fecha-sep">${formatFecha(fecha)}</div>`;
+      lastFecha = fecha;
+    }
+
+    const rol = m.role === 'user' ? 'user' : 'assistant';
+    html += `
+      <div class="burbuja-wrap ${rol}">
+        <div>
+          <div class="burbuja">
+            <div style="font-size:9px;color:${rol === 'user' ? '#4f8ef7' : '#7c5ff7'};margin-bottom:4px;font-weight:600">
+              ${rol === 'user' ? (lead.nombre ?? 'Usuario') : '🤖 Bot'}
+            </div>
+            ${escHtml(m.content)}
+          </div>
+          <div class="burbuja-time">${hora}</div>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('modal-chat').innerHTML = html;
+
+  // Scroll al fondo
+  const chat = document.getElementById('modal-chat');
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function cerrarModal() {
+  document.getElementById('modal-overlay').style.display = 'none';
+  document.getElementById('modal-conv').style.display = 'none';
+  // IMPORTANTE: Limpiar el contenedor al cerrar también ayuda
+  document.getElementById('modal-chat').innerHTML = '';
+  leadActivo = null;
+}
+
+// Mantener el resto de tus funciones: tomarLead, formatFecha, escHtml igual
+function tomarLead() {
+  if (!leadActivo) return;
+  if (!confirm('¿Confirmas que tomarás este lead?')) return;
+  alert('Funcionalidad próximamente');
+}
+
+function formatFecha(f) {
+  if (!f) return '';
+  const [y, m, d] = f.split('-');
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return `${parseInt(d)} ${meses[parseInt(m)-1]} ${y}`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+}
+
 document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
 </script>

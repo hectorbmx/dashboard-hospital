@@ -369,13 +369,13 @@ function renderTabla() {
         <td><span class="badge ${l.contactado === 'Sí' ? 'no' : 'si'}">${l.contactado === 'Sí' ? 'Requiere' : 'Bot OK'}</span></td>
         
 <td>
-  <button 
-    onclick="abrirConversacion(${l.raw_id})" 
-    style="background:transparent;border:1px solid #252b3b;color:#6b7280;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all .15s"
-    onmouseover="this.style.borderColor='#4f8ef7';this.style.color='#4f8ef7'"
-    onmouseout="this.style.borderColor='#252b3b';this.style.color='#6b7280'">
-    💬 Ver
-  </button>
+    <button 
+      onclick="abrirConversacion(${l.raw_id})" 
+      style="background:transparent;border:1px solid #252b3b;color:#6b7280;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;transition:all .15s"
+      onmouseover="this.style.borderColor='#4f8ef7';this.style.color='#4f8ef7'"
+      onmouseout="this.style.borderColor='#252b3b';this.style.color='#6b7280'">
+      💬 Ver
+    </button>
 </td>
       </tr>`
     ).join('');
