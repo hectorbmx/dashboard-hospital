@@ -22,6 +22,7 @@
     <div class="nav-label">Seguimiento</div>
     <a class="nav-item <?= $paginaActual === 'agenda'  ? 'active' : '' ?>" href="#">📅 Agenda</a>
     <a class="nav-item <?= $paginaActual === 'agentes' ? 'active' : '' ?>" href="agentes.php">🧑‍💼 Agentes</a>
+    <a class="nav-item <?= $paginaActual === 'empresas' ? 'active' : '' ?>" href="empresas.php">🧑‍💼 Empresas</a>
   </div>
   <div class="nav-section">
     <div class="nav-label">Reportes</div>
