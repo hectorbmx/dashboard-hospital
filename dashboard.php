@@ -367,7 +367,7 @@ function renderTabla() {
         <td>${dotsHtml(l.datos, l.temp)}</td>
         <td><span class="badge ${tempClass(l.temp)}">${l.temp}</span></td>
         <td><span class="badge ${l.contactado === 'Sí' ? 'no' : 'si'}">${l.contactado === 'Sí' ? 'Requiere' : 'Bot OK'}</span></td>
-        // al final del tr, después de la columna Humano:
+        
 <td>
   <button 
     onclick="abrirConversacion(${l.raw_id})" 
